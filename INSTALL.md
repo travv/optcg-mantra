@@ -27,16 +27,17 @@ pip3 install --user mcp httpx certifi
 ## 3. Pick a vault root (where snapshots get cached)
 
 The server caches downloaded replays (`.log` + parsed `.json`) under a vault
-root you control. Set `OPBOUNTY_VAULT_ROOT` to wherever you want them to land
-— most people point this at an Obsidian vault folder so the JSON ends up
+root you control. Set `MANTRA_VAULT_ROOT` to wherever you want them to land —
+most people point this at an Obsidian vault folder so the JSON ends up
 searchable alongside their notes.
 
 ```bash
 # Add to ~/.zshrc or ~/.bashrc:
-export OPBOUNTY_VAULT_ROOT="$HOME/Documents/myvault/optcg/replays"
+export MANTRA_VAULT_ROOT="$HOME/Documents/myvault/optcg/replays"
 ```
 
-If unset, the server defaults to `~/opbounty-replays/`.
+If unset, the server falls back to the legacy `OPBOUNTY_VAULT_ROOT` env var,
+then defaults to `~/mantra-replays/`.
 
 ## 4. Verify auth + Firestore work
 
@@ -75,7 +76,7 @@ entry under `mcpServers`:
       "command": "python3",
       "args": ["/Users/YOU/Documents/optcg-mantra/mantra/server.py"],
       "env": {
-        "OPBOUNTY_VAULT_ROOT": "/Users/YOU/Documents/myvault/optcg/replays"
+        "MANTRA_VAULT_ROOT": "/Users/YOU/Documents/myvault/optcg/replays"
       }
     }
   }

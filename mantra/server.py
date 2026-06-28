@@ -30,7 +30,9 @@ _fs = Firestore(_auth)
 _store = Storage(_auth)
 
 DEFAULT_VAULT_ROOT = os.path.expanduser(
-    os.environ.get("OPBOUNTY_VAULT_ROOT", "~/opbounty-replays")
+    os.environ.get("MANTRA_VAULT_ROOT")
+    or os.environ.get("OPBOUNTY_VAULT_ROOT")
+    or "~/mantra-replays"
 )
 
 

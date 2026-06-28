@@ -60,9 +60,10 @@ the full vocabulary. Card ids tagged inline as
 
 ## Vault paths
 
-- Cached replays: `$OPBOUNTY_VAULT_ROOT/<leaderA>-vs-<leaderB>/` (default
-  `~/opbounty-replays/`). Set the env var in your MCP registration to point
-  at an Obsidian vault folder or wherever you want snapshots cached.
+- Cached replays: `$MANTRA_VAULT_ROOT/<leaderA>-vs-<leaderB>/` (default
+  `~/mantra-replays/`; legacy `OPBOUNTY_VAULT_ROOT` is honored as a fallback).
+  Set the env var in your MCP registration to point at an Obsidian vault
+  folder or wherever you want snapshots cached.
 
 ## Notes
 

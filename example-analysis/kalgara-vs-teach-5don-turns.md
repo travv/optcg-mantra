@@ -1,4 +1,4 @@
-# Kalgara vs by Teach — 5-DON Turn Analysis
+# Kalgara vs Teach — 5-DON Turn Analysis
 
 **Date:** 2026-06-28
 **Source:** OPBounty replay collection — standard queue (game_mode=0), top-200 ladder or 3000+ bounty pilots only.

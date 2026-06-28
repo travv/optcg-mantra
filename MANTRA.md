@@ -33,7 +33,7 @@ pre-filtered to high-skill play. When analyzing matchups, treat the sample as
 | `list_replays(leader=, opponent=, game_mode=, week=, since=, min_bounty=, limit=)` | Firestore metadata rows. Leader matches either side. Auto-merges winner/loser sides. |
 | `get_replay(path)` | Raw `.log` text from Firebase Storage. |
 | `get_replay_parsed(path)` | Parsed JSON — turns, actions, DON tracking, winner. |
-| `snapshot_replays(leader, ...)` | Bulk-pull to `OPBOUNTY_VAULT_ROOT`. Saves `.log` + `.json`. Idempotent — re-runs skip already-cached files. |
+| `snapshot_replays(leader, ...)` | Bulk-pull to `MANTRA_VAULT_ROOT`. Saves `.log` + `.json`. Idempotent — re-runs skip already-cached files. |
 
 Leaders are referenced by **raw card id** (e.g. `OP08-098` for Kalgara,
 `OP16-080` for Teach), NOT by normalized names like `"MonkeyDLuffy"`. The
@@ -82,11 +82,12 @@ the in-game `Draw N Don` line; filter on that, not on turn number.
 
 ## Vault layout (where `snapshot_replays` writes)
 
-Set `OPBOUNTY_VAULT_ROOT` to wherever cached replays should live (default
-`~/opbounty-replays/`).
+Set `MANTRA_VAULT_ROOT` to wherever cached replays should live (default
+`~/mantra-replays/`; the legacy `OPBOUNTY_VAULT_ROOT` is honored as a
+fallback).
 
 ```
-<OPBOUNTY_VAULT_ROOT>/
+<MANTRA_VAULT_ROOT>/
   <leaderA>-vs-<leaderB>/         # leader codes in SORTED order
     <timestamp>.log               # raw combat log
     <timestamp>.json              # parsed + _metadata (deck, bounties, etc.)

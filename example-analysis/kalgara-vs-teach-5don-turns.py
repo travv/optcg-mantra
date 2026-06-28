@@ -21,7 +21,11 @@ from collections import Counter, defaultdict
 
 KALGARA = "OP08-098"
 TEACH = "OP16-080"
-VAULT = os.path.expanduser(os.environ.get("OPBOUNTY_VAULT_ROOT", "~/opbounty-replays"))
+VAULT = os.path.expanduser(
+    os.environ.get("MANTRA_VAULT_ROOT")
+    or os.environ.get("OPBOUNTY_VAULT_ROOT")
+    or "~/mantra-replays"
+)
 DIR = os.path.join(VAULT, "OP08-098-vs-OP16-080")
 REPORT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "kalgara-vs-teach-5don-turns.md")
 
@@ -176,7 +180,7 @@ def main():
 
     # Write report
     lines = []
-    lines.append(f"# Kalgara vs by Teach — 5-DON Turn Analysis")
+    lines.append(f"# Kalgara vs Teach — 5-DON Turn Analysis")
     lines.append("")
     lines.append(f"**Date:** 2026-06-28")
     lines.append(f"**Source:** OPBounty replay collection — standard queue (game_mode=0), top-200 ladder or 3000+ bounty pilots only.")

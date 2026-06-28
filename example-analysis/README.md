@@ -11,7 +11,7 @@ matchup?" analysis. Use as a template — swap leader ids, swap the
    snapshot_replays(leader="OP08-098", opponent="OP16-080", game_mode="0", limit=300)
    ```
    This caches `.log` + parsed `.json` into
-   `$OPBOUNTY_VAULT_ROOT/OP08-098-vs-OP16-080/`.
+   `$MANTRA_VAULT_ROOT/OP08-098-vs-OP16-080/`.
 
 2. **Run the script:**
    ```bash

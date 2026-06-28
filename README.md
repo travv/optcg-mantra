@@ -13,7 +13,7 @@ analyze those replays from Claude Code.
 ## Read in this order
 
 1. **`INSTALL.md`** — get the MCP server running, register it with Claude
-   Code, set `OPBOUNTY_VAULT_ROOT`, verify with `--selftest`.
+   Code, set `MANTRA_VAULT_ROOT`, verify with `--selftest`.
 2. **`MANTRA.md`** — the Claude-facing brief. Copy into your
    `~/.claude/CLAUDE.md` or project `CLAUDE.md` so Claude understands the
    domain (Replays schema, DON-ramp 1st/2nd gotcha, vault layout) before you
