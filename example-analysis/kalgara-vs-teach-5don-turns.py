@@ -135,8 +135,8 @@ def _split_main_and_background(actions: list[dict], turn_player: str) -> tuple[l
 
     Main play = the turn-player's plays, DON spend, leader-effect
     consequences, and attacks whose attacker was deployed THIS turn (or is
-    the leader). Background = the turn-player's swings with characters
-    deployed on prior turns.
+    the leader). Existing-board swings = the turn-player's swings with
+    characters deployed on prior turns.
 
     Actions belonging to the OPPONENT (reactive triggers like a destroyed
     Van Augur's on-destroy draw) are dropped entirely from both views —
@@ -181,7 +181,7 @@ def kalgara_5don_turns(parsed: dict):
 
     `main_sig` is the trimmed main-play token sequence (what the player
     actually does with their 5 DON, plus immediate consequences).
-    `background_sig` is the other kept tokens (existing-board swings etc.)."""
+    `background_sig` is the other kept tokens (existing-board swings)."""
     kalgara_player = None
     teach_player = None
     for n, info in parsed.get("players", {}).items():
@@ -343,7 +343,7 @@ def build_report(*, parsed_all, kalgara_wins, kalgara_games, no_5don,
     L.append(f"**With at least one Kalgara 5-DON turn:** {len(parsed_all)-no_5don}")
     L.append(f"**Kalgara win rate in this sample:** {kalgara_wins}/{kalgara_games} = {wr:.1f}%")
     L.append("")
-    L.append("**Method:** For each replay, find Kalgara's turn whose `don_at_start == 5`. Take the action sequence on that turn and split it into two strips: a **main play** (cards played this turn, DON spent, attacks with characters deployed this turn, and the consequences of those plays — `effect_top_life`, on-deploy draws, `send_life`, `effect_revive`, `add_to_life`) and **background swings** (attacks with pre-existing-board characters). Group by the first 8 main-play tokens; rows differing only in background swings collapse together. Snapshot, combat-resolve and informational effect lines (trigger reveal, Kalgara's leader reveal-mill) are dropped.")
+    L.append("**Method:** For each replay, find Kalgara's turn whose `don_at_start == 5`. Take the action sequence on that turn and split it into two strips: a **main play** (cards played this turn, DON spent, attacks with characters deployed this turn, and the consequences of those plays — `effect_top_life`, on-deploy draws, `send_life`, `effect_revive`, `add_to_life`) and **existing-board swings** (attacks with characters that were already on the board before this turn). Group by the first 8 main-play tokens; rows differing only in existing-board swings collapse together. Snapshot, combat-resolve and informational effect lines (trigger reveal, Kalgara's leader reveal-mill) are dropped.")
     L.append("")
     L.append("Card legend (Kalgara core): `OP15-114` = 5c Wyper, `OP08-098` = Kalgara leader, `OP08-099` = 4c New Kalgara, `OP12-099` = leader-effect Kalgara, `OP06-114` = Wyper (rev), `EB03-053` = Zeus/Nami, `OP05-117` = Earth Won't Lose counter.")
     L.append("")
@@ -351,9 +351,9 @@ def build_report(*, parsed_all, kalgara_wins, kalgara_games, no_5don,
     L.append("")
     L.append(f"**{sum(short_by_first['1st'].values())} 5-DON turns** observed going 1st.")
     L.append("")
-    L.append("Each row shows the **main play** (deploys, DON spend, attacks with cards played this turn, and their immediate effects). If the Kalgara player also swung an existing-board character before/after the main play, those background swings are shown in the secondary strip below — they're not part of the 5-DON decision but help contextualize the turn.")
+    L.append("Each row shows the **main play** (deploys, DON spend, attacks with cards played this turn, and their immediate effects). If the Kalgara player also swung an existing-board character before/after the main play, those existing-board swings are shown in the secondary strip below — they're not part of the 5-DON decision but help contextualize the turn.")
     L.append("")
-    L.append("| Freq | Wins | WR | Main play (and background swings) |")
+    L.append("| Freq | Wins | WR | Main play (and existing-board swings) |")
     L.append("|---:|---:|---:|---|")
     for sig, n in short_by_first["1st"].most_common(10):
         w = short_by_first_wins["1st"][sig]
@@ -363,14 +363,14 @@ def build_report(*, parsed_all, kalgara_wins, kalgara_games, no_5don,
         if mode == "repo":
             main_cell = render_repo_cell(sig)
             bg_cell = render_repo_cell(bg_sig) if bg_sig else ""
-            cell = main_cell + (f"<br><sub>background: {bg_cell}</sub>" if bg_sig else "")
+            cell = main_cell + (f"<br><sub>existing board: {bg_cell}</sub>" if bg_sig else "")
         else:
             cell = render_vault_cell(sig, available_assets)
             if bg_sig:
                 bg_html = render_vault_cell(bg_sig, available_assets)
                 cell = (
                     cell + '<div style="opacity:.55;font-size:.85em;margin-top:4px">'
-                    '<em>background swings:</em><br>' + bg_html + '</div>'
+                    '<em>existing-board swings:</em><br>' + bg_html + '</div>'
                 )
         L.append(f"| {n} | {w} | {wr2:.0f}% | {cell} |")
     L.append("")
