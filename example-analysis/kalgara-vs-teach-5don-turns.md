@@ -6,86 +6,64 @@
 **With at least one Kalgara 5-DON turn:** 130
 **Kalgara win rate in this sample:** 134/244 = 54.9%
 
-**Method:** For each replay, find Kalgara's turn whose `don_at_start == 5` (the first 5-DON turn, i.e. turn 3 going 2nd or turn 4 going 1st). Take the action sequence on that turn — `deploy`, `attach_don`, `attack` (vs leader/body), `counter`, `effect:source_card`. Group by the first 5 meaningful actions ('short signature'). Snapshot lines and combat-resolve lines are dropped — they're bookkeeping, not decisions.
+**Method:** For each replay, find Kalgara's turn whose `don_at_start == 5`. Take the action sequence on that turn — `deploy`, `attach_don`, `attack`, `counter`, plus structured leader-effect tokens (`effect_deploy:<card>` for Kalgara's post-attack 'Deploy from hand', `effect_top_life`, `send_life`, `effect_attach_don`, `effect_revive`). Snapshot, combat-resolve and informational effect lines are dropped. Group by the first 5 meaningful tokens.
 
-Note: card-id readability is left to the reader; e.g. `OP15-114` = 5c Wyper, `OP08-098` = Kalgara leader, `OP08-099` = 4c New Kalgara, `OP06-111` = Braham, `OP05-106` = Shura, `OP05-117` = Counter (Earth Won't Lose), `EB03-053` = Zeus.
+Card legend (Kalgara core): `OP15-114` = 5c Wyper, `OP08-098` = Kalgara leader, `OP08-099` = 4c New Kalgara, `OP12-099` = leader-effect Kalgara, `OP06-114` = Wyper (rev), `EB03-053` = Zeus/Nami, `OP05-117` = Earth Won't Lose counter.
 
-## Top 5-DON action openings (first 5 meaningful tokens)
+## Going 1st — top 10 5-DON openings
 
-| Freq | Wins | WR | Tokens | Sample replays |
-|---:|---:|---:|---|---|
-| 21 | 11 | 52% | `deploy:EB03-053 · effect:EB03-053 · effect:EB03-053 · attack:LEADER · effect:OP08-098` | <sub>Replays/2026-W24/0/OP08-098/OP16-080_1763_3211_2026-06-15T16:33:08.log<br>Replays/2026-W24/0/OP16-080/OP08-098_2866_4667_2026-06-17T11:38:00.log<br>Replays/2026-W24/0/OP16-080/OP08-098_2163_2825_2026-06-18T05:02:55.log</sub> |
-| 15 | 5 | 33% | `deploy:OP15-114 · effect:OP15-114 · effect:OP15-114 · effect:OP15-114 · effect:OP15-114` | <sub>Replays/2026-W24/0/OP16-080/OP08-098_3318_2087_2026-06-15T14:55:41.log<br>Replays/2026-W24/0/OP16-080/OP08-098_3269_4370_2026-06-16T07:07:10.log<br>Replays/2026-W24/0/OP16-080/OP08-098_1891_1673_2026-06-16T10:47:43.log</sub> |
-| 4 | 2 | 50% | `attack:LEADER · effect:OP16-080 · effect:OP16-080 · effect:OP16-103 · effect:OP16-103` | <sub>Replays/2026-W24/0/OP16-080/OP08-098_1861_3018_2026-06-15T07:32:41.log<br>Replays/2026-W24/0/OP08-098/OP16-080_934_1630_2026-06-17T15:11:12.log<br>Replays/2026-W24/0/OP16-080/OP08-098_2204_2296_2026-06-18T06:26:32.log</sub> |
-| 4 | 1 | 25% | `deploy:OP15-114 · effect:OP15-114 · effect:OP15-114 · effect:OP15-114 · attack:LEADER` | <sub>Replays/2026-W24/0/OP16-080/OP08-098_1293_2013_2026-06-16T23:07:42.log<br>Replays/2026-W24/0/OP16-080/OP08-098_1513_2255_2026-06-18T22:40:48.log<br>Replays/2026-W25/0/OP16-080/OP08-098_1738_2165.log</sub> |
-| 4 | 2 | 50% | `attack:LEADER · deploy:OP15-114 · effect:OP15-114 · effect:OP15-114 · effect:OP15-114` | <sub>Replays/2026-W25/0/OP16-080/OP08-098_3945_5093.log<br>Replays/2026-W25/0/OP16-080/OP08-098_1275_1292.log<br>Replays/2026-W25/0/OP08-098/OP16-080_1636_2299.log</sub> |
-| 3 | 1 | 33% | `attach_don:1->OP08-098 · attack:LEADER · effect:OP08-098 · effect:OP08-098 · effect:OP12-099` | <sub>Replays/2026-W24/0/OP08-098/OP16-080_4268_4012_2026-06-18T05:07:02.log<br>Replays/2026-W25/0/OP16-080/OP08-098_2339_2307.log<br>Replays/2026-W25/0/OP16-080/OP08-098_2051_2526.log</sub> |
-| 3 | 2 | 67% | `attack:LEADER · counter:OP09-086(1000) · deploy:EB03-053 · effect:EB03-053 · effect:EB03-053` | <sub>Replays/2026-W25/0/OP16-080/OP08-098_1737_2678.log<br>Replays/2026-W25/0/OP08-098/OP16-080_4986_3130.log<br>Replays/2026-W25/0/OP08-098/OP16-080_1078_1534.log</sub> |
-| 3 | 2 | 67% | `attack:LEADER · counter:OP09-086(1000) · deploy:OP15-114 · effect:OP15-114 · effect:OP15-114` | <sub>Replays/2026-W25/0/OP16-080/OP08-098_3786_2161.log<br>Replays/2026-W25/0/OP08-098/OP16-080_3053_1892.log<br>Replays/2026-W25/0/OP08-098/OP16-080_1921_1860.log</sub> |
-| 3 | 1 | 33% | `attach_don:1->OP08-098 · attack:LEADER · effect:OP08-098 · effect:OP08-098 · effect:OP16-080` | <sub>Replays/2026-W25/0/OP08-098/OP16-080_2137_1669.log<br>Replays/2026-W25/0/OP16-080/OP08-098_3680_2322.log<br>Replays/2026-W26/0/OP16-080/OP08-098_2055_1243.log</sub> |
-| 3 | 1 | 33% | `deploy:OP15-101 · effect:OP15-101 · effect:OP15-101 · effect:OP15-101 · effect:None` | <sub>Replays/2026-W25/0/OP08-098/OP16-080_2343_1604.log<br>Replays/2026-W25/0/OP16-080/OP08-098_1184_1346.log<br>Replays/2026-W25/0/OP16-080/OP08-098_2322_1708.log</sub> |
-| 2 | 1 | 50% | `attack:LEADER · deploy:EB03-053 · effect:EB03-053 · effect:EB03-053 · attack:LEADER` | <sub>Replays/2026-W24/0/OP08-098/OP16-080_2249_3059_2026-06-14T21:48:25.log<br>Replays/2026-W26/0/OP16-080/OP08-098_2526_2162.log</sub> |
-| 2 | 2 | 100% | `deploy:EB03-053 · effect:EB03-053 · effect:EB03-053 · attack:LEADER · effect:OP16-080` | <sub>Replays/2026-W24/0/OP08-098/OP16-080_4839_3074_2026-06-17T04:15:02.log<br>Replays/2026-W25/0/OP08-098/OP16-080_1173_782.log</sub> |
-| 2 | 2 | 100% | `attack:LEADER · counter:OP16-109(2000) · deploy:EB03-053 · effect:EB03-053 · effect:EB03-053` | <sub>Replays/2026-W24/0/OP08-098/OP16-080_4871_2457_2026-06-17T08:49:47.log<br>Replays/2026-W25/0/OP08-098/OP16-080_1661_1170.log</sub> |
-| 2 | 0 | 0% | `attack:LEADER · counter:OP16-106(1000) · deploy:OP15-114 · effect:OP15-114 · effect:OP15-114` | <sub>Replays/2026-W24/0/OP16-080/OP08-098_2332_2522.log<br>Replays/2026-W25/0/OP16-080/OP08-098_2344_1578.log</sub> |
-| 2 | 2 | 100% | `deploy:EB03-053 · effect:EB03-053 · effect:EB03-053 · attack:LEADER · counter:OP09-095(1000)` | <sub>Replays/2026-W25/0/OP08-098/OP16-080_1745_1766.log<br>Replays/2026-W25/0/OP08-098/OP16-080_2833_1876.log</sub> |
-| 2 | 0 | 0% | `deploy:OP15-114 · effect:OP15-114 · attack:LEADER · effect:OP08-098 · effect:OP08-098` | <sub>Replays/2026-W25/0/OP16-080/OP08-098_2655_2060.log<br>Replays/2026-W25/0/OP16-080/OP08-098_1881_1722.log</sub> |
-| 2 | 2 | 100% | `attach_don:1->OP08-098 · attack:LEADER · effect:OP08-098 · effect:OP08-098 · effect:OP06-114` | <sub>Replays/2026-W25/0/OP08-098/OP16-080_2428_1800.log<br>Replays/2026-W25/0/OP08-098/OP16-080_2831_2898.log</sub> |
-| 1 | 1 | 100% | `attack:LEADER · counter:OP16-103(1000) · attach_don:1->OP08-098 · attack:LEADER · effect:OP08-098` | <sub>Replays/2026-W24/0/OP08-098/OP16-080_2936_2099_2026-06-15T15:36:35.log</sub> |
-| 1 | 0 | 0% | `attack:LEADER · effect:OP16-108 · effect:OP16-108 · deploy:OP15-119` | <sub>Replays/2026-W24/0/OP16-080/OP08-098_1874_1274_2026-06-15T21:46:21.log</sub> |
-| 1 | 0 | 0% | `attack:BODY · deploy:OP15-101 · effect:OP15-101 · effect:OP15-101 · effect:OP15-101` | <sub>Replays/2026-W24/0/OP16-080/OP08-098_3266_2700_2026-06-16T04:39:25.log</sub> |
-
-## 1st vs 2nd split (top 10 each)
-
-### Going **1st**  (125 5-DON turns)
+**125 5-DON turns** observed going 1st.
 
 | Freq | Wins | WR | Tokens |
 |---:|---:|---:|---|
-| 21 | 11 | 52% | `deploy:EB03-053 · effect:EB03-053 · effect:EB03-053 · attack:LEADER · effect:OP08-098` |
-| 15 | 5 | 33% | `deploy:OP15-114 · effect:OP15-114 · effect:OP15-114 · effect:OP15-114 · effect:OP15-114` |
-| 4 | 2 | 50% | `attack:LEADER · deploy:OP15-114 · effect:OP15-114 · effect:OP15-114 · effect:OP15-114` |
-| 3 | 2 | 67% | `attack:LEADER · effect:OP16-080 · effect:OP16-080 · effect:OP16-103 · effect:OP16-103` |
-| 3 | 1 | 33% | `attach_don:1->OP08-098 · attack:LEADER · effect:OP08-098 · effect:OP08-098 · effect:OP12-099` |
-| 3 | 1 | 33% | `deploy:OP15-114 · effect:OP15-114 · effect:OP15-114 · effect:OP15-114 · attack:LEADER` |
-| 3 | 2 | 67% | `attack:LEADER · counter:OP09-086(1000) · deploy:EB03-053 · effect:EB03-053 · effect:EB03-053` |
-| 3 | 1 | 33% | `attach_don:1->OP08-098 · attack:LEADER · effect:OP08-098 · effect:OP08-098 · effect:OP16-080` |
-| 3 | 1 | 33% | `deploy:OP15-101 · effect:OP15-101 · effect:OP15-101 · effect:OP15-101 · effect:None` |
-| 2 | 1 | 50% | `attack:LEADER · deploy:EB03-053 · effect:EB03-053 · effect:EB03-053 · attack:LEADER` |
+| 16 | 4 | 25% | `deploy:OP15-114 · effect_attach_don:1R->OP08-098 · attack:LEADER · effect_deploy:OP12-099 · effect_top_life:OP08-098` |
+| 10 | 5 | 50% | `deploy:EB03-053 · effect_attach_don:1R->OP08-098 · send_life:EB03-053(1) · attack:LEADER · effect_deploy:OP12-099` |
+| 10 | 8 | 80% | `attack:LEADER · deploy:OP15-114 · effect_attach_don:1R->OP08-098 · attack:LEADER · effect_deploy:OP12-099` |
+| 7 | 4 | 57% | `deploy:EB03-053 · effect_attach_don:1R->OP08-098 · send_life:EB03-053(1) · attack:LEADER · effect_deploy:OP15-114` |
+| 4 | 1 | 25% | `attack:LEADER · deploy:EB03-053 · effect_attach_don:1R->OP08-098 · send_life:EB03-053(1) · attack:LEADER` |
+| 3 | 2 | 67% | `attack:LEADER · counter:OP09-086(1000) · deploy:EB03-053 · effect_attach_don:1R->OP08-098 · send_life:EB03-053(1)` |
+| 3 | 3 | 100% | `attach_don:1->OP08-098 · attack:LEADER · effect_deploy:OP06-114 · effect_top_life:OP08-098 · effect:OP06-114` |
+| 2 | 2 | 100% | `attack:LEADER · counter:OP16-109(2000) · deploy:EB03-053 · effect_attach_don:1R->OP08-098 · send_life:EB03-053(1)` |
+| 2 | 1 | 50% | `attack:LEADER · deploy:OP08-110 · effect_deploy:OP05-117 · attach_don:1->OP08-098 · attack:LEADER` |
+| 2 | 0 | 0% | `attack:LEADER · counter:OP16-106(1000) · deploy:OP15-114 · effect_attach_don:1R->OP08-098 · attack:LEADER` |
 
-### Going **2nd**  (5 5-DON turns)
+## Going 2nd
 
-| Freq | Wins | WR | Tokens |
-|---:|---:|---:|---|
-| 1 | 0 | 0% | `deploy:OP15-114 · effect:OP15-114 · effect:OP15-114 · effect:OP15-114 · attack:LEADER` |
-| 1 | 0 | 0% | `attack:LEADER · effect:OP16-080 · effect:OP16-080 · effect:OP16-103 · effect:OP16-103` |
-| 1 | 0 | 0% | `deploy:OP15-108 · effect:OP15-108 · effect:None · attach_don:2->OP08-098 · attack:LEADER` |
-| 1 | 0 | 0% | `attack:LEADER · counter:OP09-086(1000) · deploy:OP15-114 · effect:OP15-114 · effect:OP15-114` |
-| 1 | 1 | 100% | `attack:LEADER · effect:OP16-109 · effect:OP16-109 · effect:OP16-109 · deploy:OP15-114` |
+**0 valid 5-DON turns going 2nd.** Kalgara has no DON acceleration on its 2-4-6-8-10 curve, so a 5-DON turn going 2nd is structurally impossible. **5 rows were observed in the raw data and dropped** — they indicate a DON-tracking bug in `parser.py` (suspects: `Activate N Don` double-counting, an unseen `Return N Don` variant, or `effect_attach_don` adding DON for a player-prefixed `Attach N Don to X` line that the main `_RE_ATTACH_DON` regex also counts). Filed as a follow-up; not fixed in this report.
 
 ## Card-level: what gets PLAYED on the 5-DON turn?
 
-| Card id | Plays | Wins-when-played | WR |
-|---|---:|---:|---:|
-| `OP15-114` | 48 | 19 | 40% |
-| `EB03-053` | 45 | 26 | 58% |
-| `OP15-101` | 12 | 5 | 42% |
-| `OP08-110` | 5 | 3 | 60% |
-| `OP15-108` | 4 | 0 | 0% |
-| `OP05-117` | 3 | 0 | 0% |
-| `OP15-111` | 3 | 1 | 33% |
-| `OP15-113` | 3 | 2 | 67% |
-| `OP15-119` | 2 | 1 | 50% |
-| `OP11-106` | 2 | 0 | 0% |
-| `OP15-110` | 2 | 0 | 0% |
-| `OP05-106` | 1 | 0 | 0% |
-| `OP06-102` | 1 | 0 | 0% |
+Includes both hard-paid deploys (`deploy:`) and leader-effect plays from hand (`effect_deploy:` — Kalgara's post-attack reward).
+
+| Card id | Plays | Wins-when-played | WR | Source |
+|---|---:|---:|---:|---|
+| `OP12-099` | 77 | 34 | 44% | effect_deploy |
+| `OP15-114` | 71 | 31 | 44% | hand+leader |
+| `EB03-053` | 45 | 26 | 58% | deploy |
+| `OP15-101` | 16 | 7 | 44% | hand+leader |
+| `OP05-117` | 11 | 5 | 45% | hand+leader |
+| `OP08-110` | 10 | 5 | 50% | hand+leader |
+| `OP06-114` | 9 | 5 | 56% | effect_deploy |
+| `OP15-111` | 3 | 1 | 33% | deploy |
+| `OP15-113` | 3 | 2 | 67% | deploy |
+| `OP15-119` | 2 | 1 | 50% | deploy |
+| `OP09-099` | 2 | 2 | 100% | effect_deploy |
+| `OP15-108` | 2 | 0 | 0% | deploy |
+| `OP15-110` | 2 | 0 | 0% | deploy |
+| `OP05-106` | 1 | 0 | 0% | deploy |
+| `OP06-102` | 1 | 0 | 0% | deploy |
+| `OP16-106` | 1 | 0 | 0% | effect_deploy |
+| `OP11-106` | 1 | 0 | 0% | deploy |
 
 ## Card-level: what's DON-attached on the 5-DON turn?
 
+Covers both player-driven `attach_don` and effect-driven `effect_attach_don` (e.g. Nami, 5c Wyper).
+
 | Qty | Target | Times | Wins | WR |
 |---:|---|---:|---:|---:|
-| 1 | `OP08-098` | 28 | 11 | 39% |
-| 2 | `OP08-098` | 6 | 1 | 17% |
+| 1R | `OP08-098` | 90 | 44 | 49% |
+| 1 | `OP08-098` | 27 | 11 | 41% |
+| 2 | `OP08-098` | 5 | 1 | 20% |
 | 1 | `OP15-101` | 2 | 1 | 50% |
 | 2 | `OP15-101` | 1 | 0 | 0% |
 | 3 | `OP08-098` | 1 | 0 | 0% |
@@ -93,8 +71,8 @@ Note: card-id readability is left to the reader; e.g. `OP15-114` = 5c Wyper, `OP
 
 ## Caveats
 
-- **Top-MMR sample only.** OPBounty only uploads replays from top-200 / 3000+ bounty pilots. This is high-skill play, not ladder average.
+- **Top-MMR sample only.** OPBounty only uploads replays from top-200 / 3000+ bounty pilots. High-skill, not ladder average.
 - **Standard queue (game_mode=0)** only. Other queue codes excluded.
-- **Truncated logs** that didn't complete a 5-DON Kalgara turn are silently dropped. Truncation appears in newer-client logs that emit RZ1 state frames and may end mid-game.
-- **Action ordering** in the log reflects the in-game action timeline, but it's possible for some effect lines to land out of natural order (e.g. an effect prints AFTER the attack it modified). Treat the first-3 ordering as descriptive of opening intent, not strict sequence.
-- **`don_at_start == 5`** picks Kalgara's turn 4 going 1st OR turn 3 going 2nd — but it can also pick a later turn if Kalgara was DON-returned. Filtering to first-occurrence-per-replay would be cleaner; current code reports all 5-DON turns. (For Kalgara most games only have one 5-DON turn since there's no return-DON effect in the deck.)
+- **Truncated logs** that didn't complete a 5-DON Kalgara turn are silently dropped. Truncation appears in newer-client logs that emit RZ1 state frames.
+- **Action ordering** in the log reflects the in-game timeline, but some effect lines can land out of natural order (an effect may print AFTER the attack it modified). Treat the first-3 ordering as descriptive of opening intent, not strict sequence.
+- **Going-2nd dropped.** Kalgara's DON curve going 2nd is 2-4-6-8-10 — there is no way to reach 5 DON on an even turn without an in-deck DON-accel card, which Kalgara doesn't run. Any 'going 2nd, 5 DON' row in the raw data is a parser miscount and has been excluded; see the Going 2nd section for the count.

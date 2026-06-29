@@ -117,6 +117,85 @@ def _card_id(text: str, cards: list[tuple[str, str]]) -> str | None:
     return None
 
 
+def _parse_effect_subverb(text: str, cards: list[tuple[str, str]]) -> dict | None:
+    """Detect a known sub-verb in a card-stripped effect line.
+
+    The line shape is `Source [SRC_ID]: <verb> ...` (sometimes with target
+    cards after). On match returns an action dict with a specific `verb`
+    and the structured fields the verb implies. Returns None for shapes
+    the parser doesn't recognise — the caller falls back to generic effect.
+
+    `cards` is the in-order list of (id, name) tuples extracted from the
+    original line; cards[0] is the source, cards[1:] are targets.
+    """
+    if ":" not in text:
+        return None
+    src = cards[0][0] if cards else None
+    body = text.split(":", 1)[1].strip()
+    targets = [cid for cid, _ in cards[1:]]
+    first_target = targets[0] if targets else None
+
+    if (m := re.match(r"^Attach (\d+) (Rested )?Don to\b", body)):
+        return {"verb": "effect_attach_don", "source_card": src,
+                "qty": int(m.group(1)), "rested": bool(m.group(2)),
+                "to": first_target}
+    if re.match(r"^Deploy\b", body):
+        return {"verb": "effect_deploy", "source_card": src, "card": first_target}
+    if re.match(r"^Takes Top Life\b", body):
+        return {"verb": "effect_top_life", "source_card": src}
+    if (m := re.match(r"^Send (\d+) Life to Hand\b", body)):
+        return {"verb": "effect_send_life_to_hand", "source_card": src, "qty": int(m.group(1))}
+    if (m := re.match(r"^Flip (\d+) Life Face Up\b", body)):
+        return {"verb": "effect_flip_life", "source_card": src, "qty": int(m.group(1))}
+    if (m := re.match(r"^Trash (\d+) Remaining Cards?\b", body)):
+        return {"verb": "effect_trash_remaining", "source_card": src, "qty": int(m.group(1))}
+    if re.match(r"^Trash\b", body):
+        # Could be "Trash X from Life" (Teach) or "Trash X" (target trash).
+        from_life = "from Life" in body
+        return {"verb": "effect_trash_from_life" if from_life else "effect_trash",
+                "source_card": src, "card": first_target}
+    if (m := re.match(r"^Rest (\d+) Don\b", body)):
+        return {"verb": "effect_rest_don", "source_card": src, "qty": int(m.group(1))}
+    if re.match(r"^Rest\b", body):
+        return {"verb": "effect_rest", "source_card": src, "card": first_target}
+    if (m := re.match(r"^Buff .+? (-?\d+)\b", body)):
+        return {"verb": "effect_buff", "source_card": src,
+                "card": first_target, "amount": int(m.group(1))}
+    if re.match(r"^Destroy\b", body):
+        return {"verb": "effect_destroy", "source_card": src, "card": first_target}
+    if (m := re.match(r"^Counter (\d+)\b", body)):
+        return {"verb": "effect_counter", "source_card": src, "value": int(m.group(1))}
+    if re.match(r"^Nullify effects( of)?\b", body):
+        return {"verb": "effect_nullify", "source_card": src, "card": first_target}
+    if re.match(r"^(?:<b>)?Reveal and Draw\b", body):
+        return {"verb": "effect_reveal_draw", "source_card": src, "card": first_target}
+    if (m := re.match(r"^Draw (\d+) Cards?\b", body)):
+        return {"verb": "effect_draw_card", "source_card": src, "qty": int(m.group(1))}
+    if (m := re.match(r"^Draw (\d+) Rested Don\b", body)):
+        return {"verb": "draw_rested_don", "source_card": src, "qty": int(m.group(1))}
+    if (m := re.match(r"^Draw (\d+) Don\b", body)):
+        return {"verb": "draw_don", "source_card": src, "qty": int(m.group(1))}
+    if re.match(r"^Activate Trigger\b", body):
+        return {"verb": "effect_activate_trigger", "source_card": src}
+    if re.match(r"^Activate Counter\b", body):
+        return {"verb": "effect_activate_counter", "source_card": src}
+    if re.match(r"^Can't Draw via Effects\b", body):
+        return {"verb": "effect_block_draw", "source_card": src}
+    if re.match(r"^Target of Attack changed\b", body):
+        return {"verb": "effect_redirect_attack", "source_card": src}
+    if re.match(r"^Add(?:ed)? card to (top|bottom)\b", body):
+        m2 = re.match(r"^Add(?:ed)? card to (top|bottom)\b", body)
+        return {"verb": "effect_topdeck", "source_card": src, "where": m2.group(1)}
+    if (m := re.match(r"^Add .+? to (top|bottom) of Life\b", body)):
+        return {"verb": "effect_add_to_life", "source_card": src,
+                "card": first_target, "where": m.group(1)}
+    if re.match(r"^Deployed\b", body) and "from Trash" in body:
+        return {"verb": "effect_revive", "source_card": src, "card": first_target}
+    if re.match(r"^Set\b", body):
+        return {"verb": "effect_set", "source_card": src, "card": first_target}
+    return None
+
+
 def parse_log(raw: str) -> dict:
     out: dict = {
         "header": {"room_id": None, "version": None},
@@ -207,34 +286,22 @@ def parse_log(raw: str) -> dict:
         # Require a colon to distinguish from combat lines.
         if not line.startswith("[") and "]:" in line and _RE_LEADER_EFFECT.match(line) and "[<mark>" in line:
             cleaned_full, cards = _strip_cards(line)
-            # The first card in the line is the source (leader or character).
             src = cards[0][0] if cards else None
             controller = leader_to_player.get(src) if src else None
-            # Detect inline sub-actions where useful
-            verb = "effect"
-            sub: dict = {}
-            if (mm := re.search(r": Draw (\d+) Rested Don", cleaned_full)):
-                verb = "draw_rested_don"
-                sub = {"qty": int(mm.group(1))}
-                if controller:
-                    don[controller] = don.get(controller, 0) + int(mm.group(1))
+            sub = _parse_effect_subverb(cleaned_full, cards)
+            if sub is not None:
+                # draw_don/draw_rested_don add to the player's DON pool; only
+                # this branch (no [player] prefix = leader speaking) can apply
+                # the ramp since the player-prefixed Draw N Don line already
+                # increments the counter elsewhere.
+                if sub["verb"] in ("draw_don", "draw_rested_don") and controller:
+                    don[controller] = don.get(controller, 0) + sub["qty"]
                     sub["don_total"] = don[controller]
-            elif (mm := re.search(r": Draw (\d+) Don", cleaned_full)):
-                verb = "draw_don"
-                sub = {"qty": int(mm.group(1))}
-                if controller:
-                    don[controller] = don.get(controller, 0) + int(mm.group(1))
-                    sub["don_total"] = don[controller]
-            push(
-                {
-                    "verb": verb,
-                    "player": controller,
-                    "source_card": src,
-                    "text": cleaned_full,
-                    **sub,
-                },
-                line,
-            )
+                action = {"player": controller, "text": cleaned_full, **sub}
+            else:
+                action = {"verb": "effect", "player": controller,
+                          "source_card": src, "text": cleaned_full}
+            push(action, line)
             continue
         if (m := _RE_HIT.match(line)):
             cleaned, cards = _strip_cards(m.group(1))
@@ -412,16 +479,21 @@ def parse_log(raw: str) -> dict:
             continue
 
         # Effect lines like "Wyper [OP06-114]: Rest Jesus Burgess [OP09-086]"
-        # are highly variable. We capture them generically as effect_text.
-        push(
-            {
-                "verb": "effect",
-                "player": player,
-                "cards": [cid for cid, _ in cards],
-                "text": cleaned,
-            },
-            line,
-        )
+        # — try the structured sub-verb extractor first, fall back to a
+        # generic effect record so the action list always includes the line.
+        sub = _parse_effect_subverb(cleaned, cards)
+        if sub is not None:
+            push({"player": player, "text": cleaned, **sub}, line)
+        else:
+            push(
+                {
+                    "verb": "effect",
+                    "player": player,
+                    "cards": [cid for cid, _ in cards],
+                    "text": cleaned,
+                },
+                line,
+            )
 
     return out
 
