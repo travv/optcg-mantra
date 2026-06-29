@@ -425,7 +425,16 @@ def main():
         if os.path.exists(os.path.join(ASSETS_DIR_ABS, f"{cid}.png")):
             available.add(cid)
 
-    # Render repo report
+    # Mirror assets into the repo so GitHub can resolve the relative <img> paths.
+    repo_assets_dir = os.path.join(REPO_DIR, "assets", "kalgara-vs-teach")
+    os.makedirs(repo_assets_dir, exist_ok=True)
+    for cid in available:
+        src = os.path.join(ASSETS_DIR_ABS, f"{cid}.png")
+        dst = os.path.join(repo_assets_dir, f"{cid}.png")
+        if not os.path.exists(dst):
+            shutil.copyfile(src, dst)
+
+    # Render repo report — also in vault mode so GitHub shows thumbnails.
     repo_md = build_report(
         parsed_all=parsed_all, kalgara_wins=kalgara_wins, kalgara_games=kalgara_games,
         no_5don=no_5don,
@@ -433,7 +442,7 @@ def main():
         short_samples=short_samples,
         deploys=deploys, deploy_wins=deploy_wins, deploy_kind=deploy_kind,
         targets=targets, target_wins=target_wins,
-        mode="repo", available_assets=available,
+        mode="vault", available_assets=available,
     )
     open(REPO_REPORT, "w").write(repo_md)
     print(f"Wrote repo report: {REPO_REPORT}")
