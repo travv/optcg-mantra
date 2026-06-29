@@ -68,7 +68,6 @@ DROP_VERBS = {
     "draw_don", "block", "destroyed", "draw_card", "hand_pre_mulligan",
     "draw_rested_don",
     "effect_reveal_draw",        # Kalgara mill reveal; informational
-    "effect_draw_card",          # post-attack draw, not a decision
     "effect_block_draw",         # Teach's anti-draw lock; informational
     "effect_activate_trigger",   # trigger reveal; informational
     "effect_activate_counter",   # counter captured by `counter`
@@ -77,6 +76,18 @@ DROP_VERBS = {
     "effect_buff", "effect_nullify", "effect_destroy", "effect_counter",
     "effect_trash", "effect_trash_from_life", "effect_trash_remaining",
     "effect_rest", "effect_rest_don",
+    # effect_top_life and effect_draw_card are KEPT — they're consequences of
+    # the play (Kalgara leader life-trash, 4c-Kalgara/Wyper on-deploy draw)
+    # that a player wants to see in the action strip.
+}
+
+# Verbs that are part of "the main play" on a 5-DON turn: hard-paid plays,
+# leader-driven plays + their immediate consequences, and DON spend. Attacks
+# are conditional — included only if the attacker was deployed THIS turn.
+MAIN_PLAY_VERBS = {
+    "deploy", "effect_deploy", "attach_don", "effect_attach_don",
+    "counter", "effect_top_life", "effect_send_life_to_hand",
+    "effect_draw_card", "effect_revive", "effect_add_to_life",
 }
 
 
@@ -109,6 +120,8 @@ def action_token(a: dict) -> str | None:
         return f"effect_revive:{a.get('card')}"
     if v == "effect_add_to_life":
         return f"add_to_life:{a.get('card')}"
+    if v == "effect_draw_card":
+        return f"draw:{a.get('qty') or 1}"
     if v == "effect":
         first = (a.get("cards") or [None])[0]
         if first is None:
@@ -117,7 +130,58 @@ def action_token(a: dict) -> str | None:
     return f"{v}"
 
 
+def _split_main_and_background(actions: list[dict], turn_player: str) -> tuple[list[str], list[str]]:
+    """Walk the action list and emit two parallel token sequences.
+
+    Main play = the turn-player's plays, DON spend, leader-effect
+    consequences, and attacks whose attacker was deployed THIS turn (or is
+    the leader). Background = the turn-player's swings with characters
+    deployed on prior turns.
+
+    Actions belonging to the OPPONENT (reactive triggers like a destroyed
+    Van Augur's on-destroy draw) are dropped entirely from both views —
+    they're not the turn player's decisions.
+
+    Order is preserved within each list.
+    """
+    deployed_this_turn: set[str] = {KALGARA}  # leader is always "this turn's" attacker
+    main: list[str] = []
+    background: list[str] = []
+    for a in actions:
+        v = a.get("verb")
+        tok = action_token(a)
+        if tok is None:
+            continue
+        # Drop opponent-controlled reactive effects (e.g. Van Augur's
+        # on-destroy draw fires during Kalgara's turn; Kalgara didn't decide
+        # to draw — the opponent's card did).
+        player = a.get("player")
+        if player and turn_player and player != turn_player:
+            continue
+        if v in ("deploy", "effect_deploy"):
+            cid = a.get("card")
+            if cid:
+                deployed_this_turn.add(cid)
+            main.append(tok)
+        elif v in MAIN_PLAY_VERBS:
+            main.append(tok)
+        elif v == "attack":
+            attacker = a.get("attacker")
+            if attacker in deployed_this_turn:
+                main.append(tok)
+            else:
+                background.append(tok)
+        else:
+            background.append(tok)
+    return main, background
+
+
 def kalgara_5don_turns(parsed: dict):
+    """Yield (won, first, main_sig, background_sig, turn).
+
+    `main_sig` is the trimmed main-play token sequence (what the player
+    actually does with their 5 DON, plus immediate consequences).
+    `background_sig` is the other kept tokens (existing-board swings etc.)."""
     kalgara_player = None
     teach_player = None
     for n, info in parsed.get("players", {}).items():
@@ -132,12 +196,8 @@ def kalgara_5don_turns(parsed: dict):
             continue
         if turn.get("don_at_start") != 5:
             continue
-        tokens = []
-        for a in turn.get("actions", []):
-            tok = action_token(a)
-            if tok is not None:
-                tokens.append(tok)
-        yield (won, first, tuple(tokens), turn)
+        main, background = _split_main_and_background(turn.get("actions", []), kalgara_player)
+        yield (won, first, tuple(main), tuple(background), turn)
 
 
 # ---------- token → (card_id_for_thumbnail, label) ----------
@@ -167,6 +227,9 @@ def token_view(tok: str) -> tuple[str | None, str]:
         return (target if target != "?" else None), f"+{qty} DON"
     if tok.startswith("effect_top_life:"):
         return None, "take top life"
+    if tok.startswith("draw:"):
+        n = tok.split(":",1)[1]
+        return None, f"draw {n}"
     if tok.startswith("send_life:"):
         body = tok.split(":",1)[1]
         src, rest = body.split("(",1)
@@ -265,6 +328,7 @@ def render_vault_cell(sig: tuple, available: set[str]) -> str:
 
 def build_report(*, parsed_all, kalgara_wins, kalgara_games, no_5don,
                  short_by_first, short_by_first_wins, short_samples,
+                 bg_by_main,
                  deploys, deploy_wins, deploy_kind,
                  targets, target_wins, mode: str, available_assets: set[str]):
     wr = (kalgara_wins / kalgara_games * 100) if kalgara_games else 0
@@ -279,7 +343,7 @@ def build_report(*, parsed_all, kalgara_wins, kalgara_games, no_5don,
     L.append(f"**With at least one Kalgara 5-DON turn:** {len(parsed_all)-no_5don}")
     L.append(f"**Kalgara win rate in this sample:** {kalgara_wins}/{kalgara_games} = {wr:.1f}%")
     L.append("")
-    L.append("**Method:** For each replay, find Kalgara's turn whose `don_at_start == 5`. Take the action sequence on that turn — `deploy`, `attach_don`, `attack`, `counter`, plus structured leader-effect tokens (`effect_deploy:<card>` for Kalgara's post-attack 'Deploy from hand', `effect_top_life`, `send_life`, `effect_attach_don`, `effect_revive`). Snapshot, combat-resolve and informational effect lines are dropped. Group by the first 5 meaningful tokens.")
+    L.append("**Method:** For each replay, find Kalgara's turn whose `don_at_start == 5`. Take the action sequence on that turn and split it into two strips: a **main play** (cards played this turn, DON spent, attacks with characters deployed this turn, and the consequences of those plays — `effect_top_life`, on-deploy draws, `send_life`, `effect_revive`, `add_to_life`) and **background swings** (attacks with pre-existing-board characters). Group by the first 8 main-play tokens; rows differing only in background swings collapse together. Snapshot, combat-resolve and informational effect lines (trigger reveal, Kalgara's leader reveal-mill) are dropped.")
     L.append("")
     L.append("Card legend (Kalgara core): `OP15-114` = 5c Wyper, `OP08-098` = Kalgara leader, `OP08-099` = 4c New Kalgara, `OP12-099` = leader-effect Kalgara, `OP06-114` = Wyper (rev), `EB03-053` = Zeus/Nami, `OP05-117` = Earth Won't Lose counter.")
     L.append("")
@@ -287,29 +351,45 @@ def build_report(*, parsed_all, kalgara_wins, kalgara_games, no_5don,
     L.append("")
     L.append(f"**{sum(short_by_first['1st'].values())} 5-DON turns** observed going 1st.")
     L.append("")
-    L.append("| Freq | Wins | WR | Tokens |")
+    L.append("Each row shows the **main play** (deploys, DON spend, attacks with cards played this turn, and their immediate effects). If the Kalgara player also swung an existing-board character before/after the main play, those background swings are shown in the secondary strip below — they're not part of the 5-DON decision but help contextualize the turn.")
+    L.append("")
+    L.append("| Freq | Wins | WR | Main play (and background swings) |")
     L.append("|---:|---:|---:|---|")
     for sig, n in short_by_first["1st"].most_common(10):
         w = short_by_first_wins["1st"][sig]
         wr2 = (w/n*100) if n else 0
+        bg_top = bg_by_main[sig].most_common(1)
+        bg_sig = bg_top[0][0] if bg_top and bg_top[0][0] else ()
         if mode == "repo":
-            cell = render_repo_cell(sig)
+            main_cell = render_repo_cell(sig)
+            bg_cell = render_repo_cell(bg_sig) if bg_sig else ""
+            cell = main_cell + (f"<br><sub>background: {bg_cell}</sub>" if bg_sig else "")
         else:
             cell = render_vault_cell(sig, available_assets)
+            if bg_sig:
+                bg_html = render_vault_cell(bg_sig, available_assets)
+                cell = (
+                    cell + '<div style="opacity:.55;font-size:.85em;margin-top:4px">'
+                    '<em>background swings:</em><br>' + bg_html + '</div>'
+                )
         L.append(f"| {n} | {w} | {wr2:.0f}% | {cell} |")
     L.append("")
     L.append("## Going 2nd")
     L.append("")
-    L.append(
-        f"**0 valid 5-DON turns going 2nd.** Kalgara has no DON acceleration "
-        f"on its 2-4-6-8-10 curve, so a 5-DON turn going 2nd is structurally "
-        f"impossible. **{going_2nd_anom} rows were observed in the raw data "
-        f"and dropped** — they indicate a DON-tracking bug in `parser.py` "
-        f"(suspects: `Activate N Don` double-counting, an unseen `Return N Don` "
-        f"variant, or `effect_attach_don` adding DON for a player-prefixed "
-        f"`Attach N Don to X` line that the main `_RE_ATTACH_DON` regex also "
-        f"counts). Filed as a follow-up; not fixed in this report."
-    )
+    if going_2nd_anom == 0:
+        L.append(
+            "**0 5-DON turns going 2nd.** Kalgara has no DON acceleration on "
+            "its 2-4-6-8-10 curve, so a 5-DON turn going 2nd is structurally "
+            "impossible. Confirmed zero anomalies after parser fix (player "
+            "identity attribution: see `_other_with_leader` in `mantra/parser.py`)."
+        )
+    else:
+        L.append(
+            f"**{going_2nd_anom} anomalous rows.** Kalgara going 2nd cannot "
+            f"reach 5 DON on the canonical 2-4-6-8-10 curve. These rows "
+            f"indicate a parser regression — investigate `mantra/parser.py` "
+            f"DON tracking or player attribution."
+        )
     L.append("")
     L.append("## Card-level: what gets PLAYED on the 5-DON turn?")
     L.append("")
@@ -373,13 +453,15 @@ def main():
     short_by_first = defaultdict(Counter)
     short_by_first_wins = defaultdict(Counter)
     short_samples = defaultdict(list)
+    # For each main-sig, accumulate the background-sigs we saw alongside it
+    # so we can display a representative background row underneath.
+    bg_by_main: dict[tuple, Counter] = defaultdict(Counter)
     no_5don = 0
-    all_sigs = []
     for p in parsed_all:
         had_5don = False
-        for won, first, sig, _turn in kalgara_5don_turns(p):
+        for won, first, main_sig, bg_sig, _turn in kalgara_5don_turns(p):
             had_5don = True
-            shortsig = tuple(sig[:5])
+            shortsig = tuple(main_sig[:8])
             key = "1st" if first else "2nd"
             short_by_first[key][shortsig] += 1
             if won:
@@ -387,7 +469,7 @@ def main():
             md = p.get("_metadata", {})
             if len(short_samples[shortsig]) < 3:
                 short_samples[shortsig].append(md.get("path", "?"))
-            all_sigs.append(shortsig)
+            bg_by_main[shortsig][tuple(bg_sig[:8])] += 1
         if not had_5don:
             no_5don += 1
     print(f"Going 1st 5-DON turns: {sum(short_by_first['1st'].values())}")
@@ -400,10 +482,10 @@ def main():
     targets = Counter()
     target_wins = Counter()
     for p in parsed_all:
-        for won, first, sig, _turn in kalgara_5don_turns(p):
+        for won, first, main_sig, bg_sig, _turn in kalgara_5don_turns(p):
             if not first:
                 continue
-            for tok in sig:
+            for tok in main_sig:
                 if tok.startswith("deploy:") or tok.startswith("effect_deploy:"):
                     kind, cid = tok.split(":",1)
                     deploys[cid] += 1
@@ -415,9 +497,14 @@ def main():
                     targets[(qty,target)] += 1
                     if won: target_wins[(qty,target)] += 1
 
-    # Asset bootstrap — only the cards that actually appear in top-10 going 1st
-    top10_sigs = [s for s, _ in short_by_first["1st"].most_common(10)]
-    needed = collect_card_ids(top10_sigs)
+    # Asset bootstrap — cards in the top-10 main sigs + their most-common
+    # background sig (so the background row also renders thumbnails).
+    top10_main_sigs = [s for s, _ in short_by_first["1st"].most_common(10)]
+    top10_bg_sigs = [
+        bg_by_main[s].most_common(1)[0][0] if bg_by_main[s] else ()
+        for s in top10_main_sigs
+    ]
+    needed = collect_card_ids(top10_main_sigs + top10_bg_sigs)
     copied, downloaded, missing = ensure_assets(needed)
     print(f"Assets: {copied} copied locally, {downloaded} downloaded, {len(missing)} failed")
     available = set()
@@ -434,28 +521,21 @@ def main():
         if not os.path.exists(dst):
             shutil.copyfile(src, dst)
 
-    # Render repo report — also in vault mode so GitHub shows thumbnails.
-    repo_md = build_report(
+    # Render repo report — vault-style HTML so GitHub shows thumbnails.
+    common_kw = dict(
         parsed_all=parsed_all, kalgara_wins=kalgara_wins, kalgara_games=kalgara_games,
         no_5don=no_5don,
         short_by_first=short_by_first, short_by_first_wins=short_by_first_wins,
-        short_samples=short_samples,
+        short_samples=short_samples, bg_by_main=bg_by_main,
         deploys=deploys, deploy_wins=deploy_wins, deploy_kind=deploy_kind,
         targets=targets, target_wins=target_wins,
         mode="vault", available_assets=available,
     )
+    repo_md = build_report(**common_kw)
     open(REPO_REPORT, "w").write(repo_md)
     print(f"Wrote repo report: {REPO_REPORT}")
 
-    vault_md = build_report(
-        parsed_all=parsed_all, kalgara_wins=kalgara_wins, kalgara_games=kalgara_games,
-        no_5don=no_5don,
-        short_by_first=short_by_first, short_by_first_wins=short_by_first_wins,
-        short_samples=short_samples,
-        deploys=deploys, deploy_wins=deploy_wins, deploy_kind=deploy_kind,
-        targets=targets, target_wins=target_wins,
-        mode="vault", available_assets=available,
-    )
+    vault_md = build_report(**common_kw)
     os.makedirs(os.path.dirname(VAULT_REPORT), exist_ok=True)
     open(VAULT_REPORT, "w").write(vault_md)
     print(f"Wrote vault report: {VAULT_REPORT}")

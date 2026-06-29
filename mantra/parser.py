@@ -335,7 +335,7 @@ def parse_log(raw: str) -> dict:
 
         if (m := _RE_CHOSE_ORDER.match(cleaned)):
             order = m.group(1)
-            out["first"] = player if order == "First" else _other(out["players"], player)
+            out["first"] = player if order == "First" else _other_with_leader(out["players"], player)
             continue
 
         if _RE_DREW.match(cleaned):
@@ -460,21 +460,21 @@ def parse_log(raw: str) -> dict:
         if _RE_CONCEDES.match(cleaned):
             out["ended_by"] = "concede"
             out["loser"] = player
-            out["winner"] = _other(out["players"], player)
+            out["winner"] = _other_with_leader(out["players"], player)
             push({"verb": "concede", "player": player}, line)
             continue
         if _RE_LOSES.match(cleaned):
             out["loser"] = player
-            out["winner"] = _other(out["players"], player)
+            out["winner"] = _other_with_leader(out["players"], player)
             continue
         if _RE_WINS.match(cleaned):
             out["winner"] = player
-            out["loser"] = _other(out["players"], player)
+            out["loser"] = _other_with_leader(out["players"], player)
             continue
         if _RE_QUITS.match(cleaned):
             out["ended_by"] = "disconnect"
             out["loser"] = player
-            out["winner"] = _other(out["players"], player)
+            out["winner"] = _other_with_leader(out["players"], player)
             push({"verb": "quit", "player": player}, line)
             continue
 
@@ -503,10 +503,26 @@ def _split_ids(s: str) -> list[str]:
 
 
 def _other(players: dict, name: str) -> str | None:
+    """Return any other player. Use _other_with_leader when correctness
+    depends on picking the real opponent (the placeholder names "Your Client"
+    / "Opponent" registered from "Has Connected" lines have no leader)."""
     for n in players:
         if n != name:
             return n
     return None
+
+
+def _other_with_leader(players: dict, name: str) -> str | None:
+    """Return the other player that has a `leader` assigned. Skips the
+    leader-less placeholders ("Your Client", "Opponent") that the "Has
+    Connected" system lines register, so that first-player / winner / loser
+    attribution survives logs where the real nickname appears later."""
+    for n, info in players.items():
+        if n != name and info.get("leader"):
+            return n
+    # Fallback to plain _other so we don't break a log that lacks leader
+    # info entirely (truncated header etc.).
+    return _other(players, name)
 
 
 def main() -> int:
